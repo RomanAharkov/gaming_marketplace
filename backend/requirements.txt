@@ -1,4 +1,6 @@
 fastapi[standard]
 sqlalchemy
 psycopg[binary]
+asyncpg
 python-dotenv
+alembic
