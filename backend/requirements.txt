@@ -4,3 +4,5 @@ psycopg[binary]
 asyncpg
 python-dotenv
 alembic
+pwdlib[argon2]
+resend

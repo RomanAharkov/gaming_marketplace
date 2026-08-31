@@ -1,8 +1,8 @@
-"""create users table
+"""initial
 
-Revision ID: 982ad11bd099
+Revision ID: ecf3095db82b
 Revises: 
-Create Date: 2026-08-30 20:52:09.609795
+Create Date: 2026-08-31 02:25:21.754472
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '982ad11bd099'
+revision: str = 'ecf3095db82b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,11 +28,14 @@ def upgrade() -> None:
     sa.Column('hashed_password', sa.String(), nullable=False),
     sa.Column('about', sa.String(), nullable=False),
     sa.Column('role', sa.Enum('USER', 'ADMIN', name='user_role'), nullable=False),
+    sa.Column('verification_token_hash', sa.String(), nullable=False),
+    sa.Column('verification_token_expires_at', sa.DateTime(), nullable=False),
     sa.Column('is_verified', sa.Boolean(), server_default='false', nullable=False),
     sa.Column('is_deleted', sa.Boolean(), server_default='false', nullable=False),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email'),
-    sa.UniqueConstraint('username')
+    sa.UniqueConstraint('email', name='uq_user_email'),
+    sa.UniqueConstraint('username', name='uq_user_username'),
+    sa.UniqueConstraint('verification_token_hash', name='uq_user_verification_token')
     )
     # ### end Alembic commands ###
 
