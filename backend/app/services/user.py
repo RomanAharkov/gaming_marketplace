@@ -1,16 +1,16 @@
 from app.models.user import User
-from app.exceptions.user import (
+from app.exceptions.auth import (
     UserAlreadyExistsError, 
     UsernameIsTakenError, 
     UserVerificationPendingError
 )
 from app.core.security import generate_verification_token
-from datetime import UTC, datetime, timedelta
+from app.core.config import settings
+from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-
-
+from asyncpg import UniqueViolationError
 
 
 async def register_user(username: str, email: str, hashed_password: str, session: AsyncSession) -> str:
@@ -24,10 +24,11 @@ async def register_user(username: str, email: str, hashed_password: str, session
         if existing_user is not None:
 
             if existing_user.is_verified:
-                raise UserAlreadyExistsError()
+                raise UserAlreadyExistsError("User with this email already exists")
 
-            if existing_user.verification_token_expires_at > datetime.now(UTC):
-                raise UserVerificationPendingError()
+            if (existing_user.verification_token_expires_at is not None 
+                and existing_user.verification_token_expires_at > settings.get_current_time()):
+                raise UserVerificationPendingError("User verification is still pending. Please check your email for the verification link.")
 
         while True:
             try:
@@ -41,7 +42,7 @@ async def register_user(username: str, email: str, hashed_password: str, session
                             email = email,
                             hashed_password = hashed_password,
                             verification_token_hash = token_hash,
-                            verification_token_expires_at = datetime.now(UTC) + timedelta(hours=1)
+                            verification_token_expires_at = settings.get_current_time() + timedelta(hours=1)
                         )
                         session.add(user)
 
@@ -49,15 +50,16 @@ async def register_user(username: str, email: str, hashed_password: str, session
                         existing_user.username = username
                         existing_user.hashed_password = hashed_password
                         existing_user.verification_token_hash = token_hash
-                        existing_user.verification_token_expires_at = datetime.now(UTC) + timedelta(hours=1)
+                        existing_user.verification_token_expires_at = settings.get_current_time() + timedelta(hours=1)
 
                     await session.flush()
 
             except IntegrityError as e:
-                constraint = getattr(e.orig, "constraint_name", None)
-                if constraint == "uq_user_username":
-                    raise UsernameIsTakenError() from e
-                elif constraint == "uq_user_verification_token":
+                uv_eror = e.orig.__cause__
+                constraint_name = uv_eror.constraint_name
+                if constraint_name == "uq_user_username":
+                    raise UsernameIsTakenError("Username is already taken") from e
+                elif constraint_name == "uq_user_verification_token":
                     continue
                 raise
             return token

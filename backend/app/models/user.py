@@ -14,7 +14,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=True)
 
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
 
@@ -28,9 +28,9 @@ class User(Base):
         nullable=False
     )
 
-    verification_token_hash: Mapped[str] = mapped_column(unique=True)
+    verification_token_hash: Mapped[str] = mapped_column(unique=True, nullable=True)
 
-    verification_token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    verification_token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     
     is_verified: Mapped[bool] = mapped_column(default=False, nullable=False, server_default="false")
 

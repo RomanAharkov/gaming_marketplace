@@ -1,39 +1,46 @@
+from fastapi.responses import JSONResponse
+
 from app.database import get_db
-from app.schemas.user import UserCreate
-from app.core.security import get_password_hash, send_verification_email
+from app.schemas.auth import RegistrationRequest, RegistrationResponse
+from app.core.security import get_password_hash
+from app.core.config import settings
+from app.services.email import send_verification_email
 from app.services.user import register_user
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, BackgroundTasks, Body, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
-from app.exceptions.user import (
-    UserAlreadyExistsError, 
-    UsernameIsTakenError, 
-    UserVerificationPendingError
-)
-
 
 authRouter = APIRouter()
 
-@authRouter.post('/register')
-async def register(session: Annotated[AsyncSession, Depends(get_db)],
-                   user_data: Annotated[UserCreate, Body()]):
+@authRouter.post('/register', status_code=201, response_model=RegistrationResponse)
+async def register(background_tasks: BackgroundTasks,
+                   session: Annotated[AsyncSession, Depends(get_db)],
+                   user_data: Annotated[RegistrationRequest, Body()]):
     username = user_data.username
     email = user_data.email
     hashed_password = get_password_hash(user_data.password)
 
-    try:
-        token = await register_user(username, email, hashed_password, session)
-        verification_url = f"http://127.0.0.1:8000/register/verify?token={token}"
-        send_verification_email(email, verification_url)
-    except UserAlreadyExistsError as e:
-        pass
-    except UsernameIsTakenError as e:
-        pass
-    except UserVerificationPendingError as e:
-        pass
+    token = await register_user(username, email, hashed_password, session)
 
+    verification_url = f"{settings.APP_URL}/register/verify?token={token}"
+    cancel_verification_url = f"{settings.APP_URL}/register/cancel?token={token}"
+    resend_verification_url = f"{settings.APP_URL}/register/resend?token={token}"
+
+    background_tasks.add_task(
+        send_verification_email,
+        user_data.email,
+        verification_url,
+        cancel_verification_url,
+        resend_verification_url,
+    )
+
+    return RegistrationResponse(
+        message="Registration successful. Please check your email to verify your account."
+    )
+
+    
 
 @authRouter.post('/login')
 async def login(session: Annotated[AsyncSession, Depends(get_db)],
