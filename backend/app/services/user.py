@@ -1,16 +1,16 @@
 from app.models.user import User
 from app.exceptions.auth import (
+    IncorrectCredentialsError,
     UserAlreadyExistsError, 
     UsernameIsTakenError, 
     UserVerificationPendingError
 )
-from app.core.security import generate_verification_token
+from app.core.security import generate_verification_token, verify_password
 from app.core.config import settings
 from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from asyncpg import UniqueViolationError
 
 
 async def register_user(username: str, email: str, hashed_password: str, session: AsyncSession) -> str:
@@ -63,4 +63,19 @@ async def register_user(username: str, email: str, hashed_password: str, session
                     continue
                 raise
             return token
-                
+
+
+async def authenticate_user(username: str, password: str, session: AsyncSession):
+    async with session.begin():
+        user = await session.scalar(
+            select(User).where(User.username == username)
+        )
+
+        if user is None:
+            raise IncorrectCredentialsError("Incorrect username or password")
+        if not user.is_verified:
+            raise IncorrectCredentialsError("Incorrect username or password")
+        if not verify_password(password, user.hashed_password):
+            raise IncorrectCredentialsError("Incorrect username or password")
+        
+        return user

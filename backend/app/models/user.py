@@ -42,6 +42,6 @@ class User(Base):
         UniqueConstraint(
             "verification_token_hash",
             name="uq_user_verification_token",
-        )
+        ),
     )
     

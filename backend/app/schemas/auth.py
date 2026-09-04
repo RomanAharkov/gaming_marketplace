@@ -8,3 +8,7 @@ class RegistrationRequest(BaseModel):
 
 class RegistrationResponse(BaseModel):
     message: str
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str

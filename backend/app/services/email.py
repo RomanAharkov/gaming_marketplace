@@ -17,8 +17,6 @@ TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "html"
 def load_html(template_name: str, **context) -> str:
     template_path = TEMPLATES_DIR / template_name
 
-    print(template_path)
-
     html = template_path.read_text(encoding="latin-1")
 
     for key, value in context.items():
