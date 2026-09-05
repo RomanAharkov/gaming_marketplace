@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     @staticmethod
     def get_access_token_expire_minutes() -> timedelta:
-        return timedelta(minutes=1)
+        return timedelta(minutes=30)
 
 
 settings = Settings()

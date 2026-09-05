@@ -1,6 +1,6 @@
+import enum
 from datetime import datetime
 from decimal import Decimal
-import enum
 from sqlalchemy import DateTime, Enum, ForeignKey, Numeric
 from app.models.base import Base
 from app.core.config import settings

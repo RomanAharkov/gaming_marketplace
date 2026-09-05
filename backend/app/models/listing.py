@@ -1,7 +1,7 @@
+import enum
 from datetime import datetime
 from decimal import Decimal
-import enum
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Numeric, String
 from app.models.base import Base
 from sqlalchemy.orm import mapped_column, Mapped
 from app.core.config import settings
@@ -22,11 +22,11 @@ class Listing(Base):
 
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
 
-    category_id: Mapped[int] = mapped_column(ForeignKey('categories.id'), nullable=False)
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=False)
 
-    seller_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
+    seller_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     
-    game_id: Mapped[int] = mapped_column(ForeignKey('games.id'), nullable=False)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False)
 
     status: Mapped[ListingStatus] = mapped_column(
             Enum(ListingStatus, name="listing_status"), 
@@ -38,5 +38,12 @@ class Listing(Base):
         DateTime(timezone=True), 
         default=settings.get_current_time, 
         nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "price >= 0",
+            name="price_range"
+        ),
     )
     

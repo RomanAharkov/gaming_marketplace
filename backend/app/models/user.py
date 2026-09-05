@@ -1,6 +1,6 @@
+import enum
 from datetime import datetime
 from app.models.base import Base
-import enum
 from sqlalchemy import DateTime, Enum, String, UniqueConstraint
 from sqlalchemy.orm import mapped_column, Mapped
 

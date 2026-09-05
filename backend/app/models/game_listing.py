@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, ForeignKey, String
+from sqlalchemy import ForeignKey, String
 from app.models.base import Base
 from sqlalchemy.orm import mapped_column, Mapped
 
