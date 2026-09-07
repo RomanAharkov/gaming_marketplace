@@ -10,7 +10,7 @@ class SkinListing(Base):
 
     float_value: Mapped[float] = mapped_column(nullable=False)
 
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    skin_name: Mapped[str] = mapped_column(String(100), nullable=False)
 
     __table_args__ = (
         CheckConstraint(

@@ -5,7 +5,11 @@ from app.routers.verification import verificationRouter
 from app.routers.user import userRouter
 from app.routers.listing import listingRouter
 from app.exceptions.handlers.auth import incorrect_credentials_error_handler, invalid_verification_token_error_handler, registration_error_handler
+from app.exceptions.handlers.base import resource_not_found_error_handler, unauthorized_access_error_handler
 from app.exceptions.auth import IncorrectCredentialsError, InvalidVerificationTokenError, RegistrationError
+from app.exceptions.base import ResourceNotFoundError, UnauthorizedAccessError
+from app.exceptions.handlers.listing import incorrect_listing_category_error_handler
+from app.exceptions.listing import IncorrectListingCategoryError
 
 
 app = FastAPI()
@@ -13,6 +17,9 @@ app = FastAPI()
 app.add_exception_handler(RegistrationError, registration_error_handler)
 app.add_exception_handler(InvalidVerificationTokenError, invalid_verification_token_error_handler)
 app.add_exception_handler(IncorrectCredentialsError, incorrect_credentials_error_handler)
+app.add_exception_handler(ResourceNotFoundError, resource_not_found_error_handler)
+app.add_exception_handler(UnauthorizedAccessError, unauthorized_access_error_handler)
+app.add_exception_handler(IncorrectListingCategoryError, incorrect_listing_category_error_handler)
 
 app.include_router(authRouter)
 app.include_router(verificationRouter)

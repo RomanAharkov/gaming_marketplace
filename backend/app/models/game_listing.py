@@ -10,4 +10,4 @@ class GameListing(Base):
 
     platform: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    game_type: Mapped[str] = mapped_column(String(50), nullable=False)

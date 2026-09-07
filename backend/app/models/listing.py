@@ -11,6 +11,10 @@ class ListingStatus(str, enum.Enum):
     CLOSED = "closed"
     DELETED = "deleted"
 
+class ListingUpdateStatus(str, enum.Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+
 class Listing(Base):
     __tablename__ = 'listings'
 
