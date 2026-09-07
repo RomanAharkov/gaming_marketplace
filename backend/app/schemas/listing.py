@@ -8,7 +8,6 @@ class CreateGeneralListingRequest(BaseModel):
     name: str = Field(min_length=1, max_length=50)
     price: Decimal = Field(gt=0, decimal_places=2)
     description: str = Field(max_length=500)
-    #category_id: int = Field(gt=0)
     game_id: int = Field(gt=0)
 
 

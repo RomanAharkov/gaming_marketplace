@@ -62,15 +62,16 @@ async def create_listing(session: AsyncSession, user: User, listing_data: Create
     session.add(category_listing)
 
 
-async def verify_listing(session: AsyncSession, user: User, listing_id: int) -> Listing:
+async def verify_listing(session: AsyncSession, listing_id: int) -> Listing:
     listing = await session.get(Listing, listing_id)
-    if listing is None:
+    if listing is None or listing.status == ListingStatus.DELETED:
         raise ListingNotFoundError("Listing not found.")
-    elif listing.status == ListingStatus.DELETED:
-        raise ListingNotFoundError("Listing not found.")
-    elif listing.seller_id != user.id:
-        raise UnauthorizedListingAccessError("Not authorized to access this listing.")
     return listing
+
+
+async def verify_user(user: User, listing: Listing) -> None:
+    if listing.seller_id != user.id:
+        raise UnauthorizedListingAccessError("Not authorized to access this listing.")
 
 
 async def modify_listing(session: AsyncSession, listing: Listing, listing_data: PatchListingRequest) -> None:

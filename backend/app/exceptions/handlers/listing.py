@@ -8,7 +8,7 @@ async def incorrect_listing_category_error_handler(
     exc: IncorrectListingCategoryError,
 ):
     return JSONResponse(
-        status_code=404,
+        status_code=422,
         content={
             "detail": str(exc)
         }
