@@ -16,11 +16,14 @@ authRouter = APIRouter()
 async def register(background_tasks: BackgroundTasks,
                    session: Annotated[AsyncSession, Depends(get_db)],
                    user_data: Annotated[RegistrationRequest, Body()]):
+    
     username = user_data.username
     email = user_data.email
     hashed_password = get_password_hash(user_data.password)
 
     token = await register_user(username, email, hashed_password, session)
+
+    await session.commit()
 
     verification_url = f"{settings.APP_URL}/register/verify?token={token}"
     cancel_verification_url = f"{settings.APP_URL}/register/cancel?token={token}"
@@ -42,6 +45,7 @@ async def register(background_tasks: BackgroundTasks,
 @authRouter.post('/login', response_model=LoginResponse)
 async def login(session: Annotated[AsyncSession, Depends(get_db)],
                 form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    
     username = form_data.username
     password = form_data.password
 

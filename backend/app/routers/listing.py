@@ -8,14 +8,13 @@ from app.schemas.listing import (
     PatchListingRequest,
     CreateListingResponse,
 )
-from app.models.user import User, UserRole
-from app.services.listing import create_listing, verify_listing, modify_listing, verify_user
-from app.models.listing import ListingStatus
+from app.models.user import User
+from app.services.listing import create_listing, modify_listing, remove_listing
 
 
-listingRouter = APIRouter()
+listingRouter = APIRouter(prefix='/listings')
 
-@listingRouter.post('/listings', status_code=201, response_model=CreateListingResponse)
+@listingRouter.post('', status_code=201, response_model=CreateListingResponse)
 async def post_listing(session: Annotated[AsyncSession, Depends(get_db)],
                        user: Annotated[User, Depends(get_current_user)],
                        listing_data: Annotated[CreateListingRequest, Body()]):
@@ -27,28 +26,18 @@ async def post_listing(session: Annotated[AsyncSession, Depends(get_db)],
     )
 
 
-@listingRouter.patch("/listings/{listing_id}", status_code=204)
+@listingRouter.patch("/{listing_id}", status_code=204)
 async def patch_listing(session: Annotated[AsyncSession, Depends(get_db)],
                         user: Annotated[User, Depends(get_current_user)],
                         listing_id: Annotated[int, Path()],
                         listing_data: Annotated[PatchListingRequest, Body()]):
     
-    listing = await verify_listing(session, listing_id)
-    await verify_user(user, listing)
-    
-    await modify_listing(session, listing, listing_data)
+    await modify_listing(session, user, listing_id, listing_data)
 
 
-@listingRouter.delete("/listings/{listing_id}", status_code=204)
+@listingRouter.delete("/{listing_id}", status_code=204)
 async def delete_listing(session: Annotated[AsyncSession, Depends(get_db)],
                          user: Annotated[User, Depends(get_current_user)],
                          listing_id: Annotated[int, Path()]):
-    
-    listing = await verify_listing(session, listing_id)
 
-    if user.role != UserRole.ADMIN:
-        await verify_user(user, listing)
-
-    listing.status = ListingStatus.DELETED
-
-    await session.flush()
+    await remove_listing(session, user, listing_id)

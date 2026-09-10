@@ -47,5 +47,10 @@ COPY . .
 # Expose the port that the application listens on.
 EXPOSE 8000
 
+# Run startup actions
+COPY --chmod=755 entrypoint.sh /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+
 # Run the application.
-CMD uvicorn app.main:app --host 0.0.0.0 --port 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

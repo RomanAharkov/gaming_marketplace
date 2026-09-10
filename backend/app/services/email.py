@@ -1,5 +1,5 @@
 from datetime import timedelta
-from sqlalchemy import select
+from sqlalchemy import select, update
 from app.core.config import settings
 from app.models.user import User
 from app.core.security import generate_verification_token, get_verification_token_hash
@@ -44,56 +44,75 @@ def send_verification_email(email: EmailStr, verification_url: str, cancel_verif
 
 
 async def email_verification(token: str, session: AsyncSession) -> None:
+    token_hash = get_verification_token_hash(token)
+    now = settings.get_current_time()
 
-    user = await session.scalar(
-        select(User).where(User.verification_token_hash == get_verification_token_hash(token))
+    result = await session.execute(
+        update(User)
+        .where(
+            User.verification_token_hash == token_hash,
+            User.verification_token_expires_at >= now,
+            User.is_verified.is_(False),
+        )
+        .values(
+            is_verified=True,
+            verification_token_hash=None,
+            verification_token_expires_at=None,
+        )
     )
 
-    if user is None:
-        raise InvalidVerificationTokenError("Invalid verification token")
-
-    if user.verification_token_expires_at < settings.get_current_time():
-        raise InvalidVerificationTokenError("Verification token has expired")
-
-    user.is_verified = True
-    user.verification_token_hash = None
-    user.verification_token_expires_at = None
-
-    await session.flush()
+    if result.rowcount == 0:
+        raise InvalidVerificationTokenError(
+            "Invalid or expired verification token"
+        )
 
 
 async def verification_cancellation(token: str, session: AsyncSession) -> None:
+    token_hash = get_verification_token_hash(token)
 
-    user = await session.scalar(
-        select(User).where(User.verification_token_hash == get_verification_token_hash(token))
+    result = await session.execute(
+        update(User)
+        .where(
+            User.verification_token_hash == token_hash
+        )
+        .values(
+            verification_token_hash=None,
+            verification_token_expires_at=None,
+        )
     )
 
-    if user is None:
-        raise InvalidVerificationTokenError("Cancellation unsuccessful. Invalid verification token")
-
-    user.verification_token_hash = None
-    user.verification_token_expires_at = None
-
-    await session.flush()
+    if result.rowcount == 0:
+        raise InvalidVerificationTokenError(
+            "Cancellation unsuccessful. Invalid verification token"
+        )
 
 
 async def resend_verification_email(token: str, session: AsyncSession) -> tuple[str, str]:
+    old_token_hash = get_verification_token_hash(token)
+    new_token, new_token_hash = generate_verification_token()
 
-    user = await session.scalar(
-        select(User).where(User.verification_token_hash == get_verification_token_hash(token))
+    result = await session.execute(
+        update(User)
+        .where(
+            User.verification_token_hash == old_token_hash
+        )
+        .values(
+            verification_token_hash=new_token_hash,
+            verification_token_expires_at=(
+                settings.get_current_time() + timedelta(hours=1)
+            ),
+        )
+        .returning(User.email)
     )
 
-    if user is None:
-        raise InvalidVerificationTokenError("Resend unsuccessful. Invalid verification token")
+    email = result.scalar_one_or_none()
 
-    token, token_hash = generate_verification_token()
+    if email is None:
+        raise InvalidVerificationTokenError(
+            "Resend unsuccessful. Invalid verification token"
+        )
 
-    user.verification_token_expires_at = settings.get_current_time() + timedelta(hours=1)
-    user.verification_token_hash = token_hash
-
-    await session.flush()
-
-    return user.email, token
+    return email, new_token
 
         
         

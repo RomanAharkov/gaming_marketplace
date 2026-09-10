@@ -1,10 +1,12 @@
 from decimal import Decimal
 from typing import Annotated, Literal, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.listing import ListingUpdateStatus
 
 
 class CreateGeneralListingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=50)
     price: Decimal = Field(gt=0, decimal_places=2)
     description: str = Field(max_length=500)
@@ -45,6 +47,8 @@ class CreateListingResponse(BaseModel):
 
 
 class PatchGeneralListingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: Optional[str] = Field(min_length=1, max_length=50, default=None)
     price: Optional[Decimal] = Field(gt=0, decimal_places=2, default=None)
     description: Optional[str] = Field(max_length=500, default=None)

@@ -1,7 +1,8 @@
+from decimal import Decimal
 import enum
 from datetime import datetime
 from app.models.base import Base
-from sqlalchemy import DateTime, Enum, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Enum, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import mapped_column, Mapped
 
 
@@ -31,6 +32,8 @@ class User(Base):
     verification_token_hash: Mapped[str] = mapped_column(unique=True, nullable=True)
 
     verification_token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0, server_default='0')
     
     is_verified: Mapped[bool] = mapped_column(default=False, nullable=False, server_default="false")
 
@@ -42,6 +45,10 @@ class User(Base):
         UniqueConstraint(
             "verification_token_hash",
             name="uq_user_verification_token",
+        ),
+        CheckConstraint(
+            "balance >= 0",
+            name="balance_range"
         ),
     )
     

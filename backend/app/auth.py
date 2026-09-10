@@ -31,7 +31,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
 
     user = await session.get(User, user_id)
 
-    if user is None:
+    if user is None or user.is_deleted:
         raise HTTPException(status_code=401, detail=detail)
     
     return user

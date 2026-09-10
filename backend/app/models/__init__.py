@@ -8,3 +8,4 @@ import app.models.service_listing
 import app.models.skin_listing
 import app.models.order
 import app.models.review
+import app.models.payment

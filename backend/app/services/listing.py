@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.listing import (
     CreateListingRequest, 
@@ -11,7 +11,7 @@ from app.schemas.listing import (
     PatchSkinListingRequest
 )
 from app.models.listing import Listing, ListingStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.game_listing import GameListing
 from app.models.service_listing import ServiceListing
 from app.models.skin_listing import SkinListing
@@ -62,43 +62,103 @@ async def create_listing(session: AsyncSession, user: User, listing_data: Create
     session.add(category_listing)
 
 
-async def verify_listing(session: AsyncSession, listing_id: int) -> Listing:
-    listing = await session.get(Listing, listing_id)
-    if listing is None or listing.status == ListingStatus.DELETED:
-        raise ListingNotFoundError("Listing not found.")
-    return listing
+async def modify_listing(session: AsyncSession, user: User, listing_id: int, listing_data: PatchListingRequest) -> None:
 
-
-async def verify_user(user: User, listing: Listing) -> None:
-    if listing.seller_id != user.id:
-        raise UnauthorizedListingAccessError("Not authorized to access this listing.")
-
-
-async def modify_listing(session: AsyncSession, listing: Listing, listing_data: PatchListingRequest) -> None:
-    if isinstance(listing_data, PatchSkinListingRequest):
-        category_listing = await session.get(SkinListing, listing.id)
-    elif isinstance(listing_data, PatchServiceListingRequest):
-        category_listing = await session.get(ServiceListing, listing.id)
-    elif isinstance(listing_data, PatchGameListingRequest):
-        category_listing = await session.get(GameListing, listing.id)
-
-    if category_listing is None:
-        raise IncorrectListingCategoryError("Incorrect listing category.")
-
-    data = listing_data.model_dump(
-        exclude_unset=True,
-        exclude={"type"},
-    )
-
-    general_fields = {
+    general_listing_fields = {
         "name",
         "price",
         "description",
         "status"
     }
 
-    for field, value in data.items():
-        if field in general_fields:
-            setattr(listing, field, value)
-        else:
-            setattr(category_listing, field, value)
+    data = listing_data.model_dump(
+        exclude_unset=True,
+        exclude={"type"},
+    )
+
+    general_listing_data = {
+        key: value
+        for key, value in data.items()
+        if key in general_listing_fields
+    } or {
+        Listing.id: Listing.id, 
+    }
+
+    category_listing_data = {
+        key: value
+        for key, value in data.items()
+        if key not in general_listing_fields
+    }
+
+    if isinstance(listing_data, PatchSkinListingRequest):
+        category_listing = SkinListing
+    elif isinstance(listing_data, PatchServiceListingRequest):
+        category_listing = ServiceListing
+    elif isinstance(listing_data, PatchGameListingRequest):
+        category_listing = GameListing
+
+    print(category_listing)
+
+    result = await session.execute(
+        update(Listing)
+        .where(
+            Listing.id == listing_id,
+            Listing.seller_id == user.id,
+            Listing.status != ListingStatus.DELETED,
+        )
+        .values(general_listing_data)
+    )
+
+    if result.rowcount == 0:
+        listing_state = await session.scalar(
+            select(Listing).where(Listing.id == listing_id)
+        )
+        if listing_state is None or listing_state.status == ListingStatus.DELETED:
+            raise ListingNotFoundError("Listing not found.")
+        
+        if listing_state.seller_id != user.id:
+            raise UnauthorizedListingAccessError("Not authorized to access this listing.")
+        
+        raise ListingNotFoundError("Listing not found.")
+
+
+    if category_listing_data:
+        result = await session.execute(
+            update(category_listing)
+            .where(
+                category_listing.listing_id == listing_id
+            )
+            .values(category_listing_data)
+        )
+
+        if result.rowcount == 0:
+            raise IncorrectListingCategoryError("Incorrect listing category.")
+
+
+async def remove_listing(session: AsyncSession, user: User, listing_id: int) -> None:
+
+    conditions = [
+        Listing.id == listing_id,
+        Listing.status != ListingStatus.DELETED,
+    ]
+
+    if user.role != UserRole.ADMIN:
+        conditions.append(Listing.seller_id == user.id)
+
+    result = await session.execute(
+        update(Listing)
+        .where(*conditions)
+        .values(
+            status = ListingStatus.DELETED
+        )
+    )
+
+    if result.rowcount == 0:
+        listing = await session.scalar(
+            select(Listing).where(Listing.id == listing_id)
+        )
+
+        if listing is None or listing.status == ListingStatus.DELETED:
+            raise ListingNotFoundError("Listing not found.")
+
+        raise UnauthorizedListingAccessError("Not authorized to access this listing.")
